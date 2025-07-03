@@ -46,7 +46,7 @@ router.post('/', asyncHandler(async (req, res) => {
             const { posterName , productId } = req.body;
             let imageUrl = 'no_url';
             if (req.file) {
-                imageUrl = `http://192.168.0.139:3000/image/poster/${req.file.filename}`;
+                imageUrl = `${process.env.BASE_URL}/image/poster/${req.file.filename}`;
             }
 
             if (!posterName) {
@@ -95,7 +95,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
 
             if (req.file) {
-                image = `http://192.168.0.139:3000/image/poster/${req.file.filename}`;
+                image = `${process.env.BASE_URL}/image/poster/${req.file.filename}`;
             }
 
             if (!posterName || !image) {
