@@ -6,6 +6,11 @@ const Product = require('../model/product');
 const { uploadCategory } = require('../uploadFile');
 const multer = require('multer');
 const asyncHandler = require('express-async-handler');
+const cloudinary = require('../config/cloudinary');
+const streamifier = require('streamifier');
+
+const storage = multer.memoryStorage();
+const uploadCategories = multer({ storage: storage });
 
 // Get all categories
 router.get('/', asyncHandler(async (req, res) => {
@@ -33,92 +38,117 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // Create a new category with image upload
 router.post('/', asyncHandler(async (req, res) => {
-    try {
-        uploadCategory.single('img')(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                if (err.code === 'LIMIT_FILE_SIZE') {
-                    err.message = 'File size is too large. Maximum filesize is 5MB.';
-                }
-                console.log(`Add category: ${err}`);
-                return res.json({ success: false, message: err });
-            } else if (err) {
-                console.log(`Add category: ${err}`);
-                return res.json({ success: false, message: err });
+    uploadCategories.single('img')(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                err.message = 'File size is too large. Maximum filesize is 5MB.';
             }
-            const { name } = req.body;
-            let imageUrl = 'no_url';
-            if (req.file) {
-                imageUrl = `${process.env.BASE_URL}/image/category/${req.file.filename}`;
-            }
-            console.log('url ', req.file)
+            console.log(`Add category: ${err}`);
+            return res.json({ success: false, message: err });
+        } else if (err) {
+            console.log(`Add category: ${err}`);
+            return res.json({ success: false, message: err });
+        }
 
-            if (!name) {
-                return res.status(400).json({ success: false, message: "Name is required." });
-            }
+        const { name } = req.body;
 
+        if (!name) {
+            return res.status(400).json({ success: false, message: "Name is required." });
+        }
+
+        let imageUrl = 'no_url';
+
+        if (req.file) {
             try {
-                const newCategory = new Category({
-                    name: name,
-                    image: imageUrl
+                const result = await new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        { folder: 'categories' },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    );
+                    streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
                 });
-                await newCategory.save();
-                res.json({ success: true, message: "Category created successfully.", data: null });
+                imageUrl = result.secure_url;
             } catch (error) {
-                console.error("Error creating category:", error);
-                res.status(500).json({ success: false, message: error.message });
+                console.error("Cloudinary upload error:", error);
+                return res.status(500).json({ success: false, message: "Image upload failed" });
             }
+        }
 
-        });
-
-    } catch (err) {
-        console.log(`Error creating category: ${err.message}`);
-        return res.status(500).json({ success: false, message: err.message });
-    }
+        try {
+            const newCategory = new Category({
+                name: name,
+                image: imageUrl
+            });
+            await newCategory.save();
+            res.json({ success: true, message: "Category created successfully.", data: null });
+        } catch (error) {
+            console.error("Error creating category:", error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
 }));
 
 // Update a category
 router.put('/:id', asyncHandler(async (req, res) => {
-    try {
-        const categoryID = req.params.id;
-        uploadCategory.single('img')(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                if (err.code === 'LIMIT_FILE_SIZE') {
-                    err.message = 'File size is too large. Maximum filesize is 5MB.';
-                }
-                console.log(`Update category: ${err.message}`);
-                return res.json({ success: false, message: err.message });
-            } else if (err) {
-                console.log(`Update category: ${err.message}`);
-                return res.json({ success: false, message: err.message });
+    const categoryID = req.params.id;
+
+    uploadCategories.single('img')(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                err.message = 'File size is too large. Maximum filesize is 5MB.';
             }
+            console.log(`Update category: ${err.message}`);
+            return res.json({ success: false, message: err.message });
+        } else if (err) {
+            console.log(`Update category: ${err.message}`);
+            return res.json({ success: false, message: err.message });
+        }
 
-            const { name } = req.body;
-            let image = req.body.image;
+        const { name } = req.body;
+        let image = req.body.image; // fallback if no new image uploaded
 
-            if (req.file) {
-                image = `${process.env.BASE_URL}/image/category/${req.file.filename}`;
-            }
+        if (!name) {
+            return res.status(400).json({ success: false, message: "Name is required." });
+        }
 
-            if (!name || !image) {
-                return res.status(400).json({ success: false, message: "Name and image are required." });
-            }
-
+        if (req.file) {
             try {
-                const updatedCategory = await Category.findByIdAndUpdate(categoryID, { name: name, image: image }, { new: true });
-                if (!updatedCategory) {
-                    return res.status(404).json({ success: false, message: "Category not found." });
-                }
-                res.json({ success: true, message: "Category updated successfully.", data: null });
+                const result = await new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        { folder: 'categories' },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    );
+                    streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+                });
+                image = result.secure_url;
             } catch (error) {
-                res.status(500).json({ success: false, message: error.message });
+                console.error("Cloudinary upload error:", error);
+                return res.status(500).json({ success: false, message: "Image upload failed" });
+            }
+        }
+
+        try {
+            const updatedCategory = await Category.findByIdAndUpdate(
+                categoryID,
+                { name: name, image: image },
+                { new: true }
+            );
+
+            if (!updatedCategory) {
+                return res.status(404).json({ success: false, message: "Category not found." });
             }
 
-        });
-
-    } catch (err) {
-        console.log(`Error updating category: ${err.message}`);
-        return res.status(500).json({ success: false, message: err.message });
-    }
+            res.json({ success: true, message: "Category updated successfully.", data: updatedCategory });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
 }));
 
 // Delete a category
