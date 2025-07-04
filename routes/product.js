@@ -8,7 +8,7 @@ const streamifier = require('streamifier');
 const cloudinary = require('../config/cloudinary');
 
 const storage = multer.memoryStorage();
-const uploadProduct = multer({ storage: storage });
+const uploadProducts = multer({ storage: storage });
 
 // Get all products
 router.get('/', asyncHandler(async (req, res) => {
@@ -48,7 +48,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // create new product
 router.post('/', asyncHandler(async (req, res) => {
-    uploadProduct.fields([
+    uploadProducts.fields([
         { name: 'image1', maxCount: 1 },
         { name: 'image2', maxCount: 1 },
         { name: 'image3', maxCount: 1 },
@@ -108,7 +108,7 @@ router.post('/', asyncHandler(async (req, res) => {
 router.put('/:id', asyncHandler(async (req, res) => {
     const productId = req.params.id;
 
-    uploadProduct.fields([
+    uploadProducts.fields([
         { name: 'image1', maxCount: 1 },
         { name: 'image2', maxCount: 1 },
         { name: 'image3', maxCount: 1 },
