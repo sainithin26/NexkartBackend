@@ -10,82 +10,84 @@ const cloudinary = require('../config/cloudinary');
 const storage = multer.memoryStorage();
 const uploadProducts = multer({ storage: storage });
 
-// Get all products
+// ==============================
+// GET all products
+// ==============================
 router.get('/', asyncHandler(async (req, res) => {
-    try {
-        const products = await Product.find()
-        .populate('proCategoryId', 'id name')
-        .populate('proSubCategoryId', 'id name')
-        .populate('proBrandId', 'id name')
-        .populate('proVariantTypeId', 'id type')
-        .populate('proVariantId', 'id name');
-        res.json({ success: true, message: "Products retrieved successfully.", data: products });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    const products = await Product.find()
+        .populate('proCategoryId', '_id name')
+        .populate('proSubCategoryId', '_id name')
+        .populate('proBrandId', '_id name');
+    res.json({ success: true, message: "Products retrieved successfully.", data: products });
 }));
 
-// Get a product by ID
+// ==============================
+// GET single product by ID
+// ==============================
 router.get('/:id', asyncHandler(async (req, res) => {
-    try {
-        const productID = req.params.id;
-        const product = await Product.findById(productID)
-            .populate('proCategoryId', 'id name')
-            .populate('proSubCategoryId', 'id name')
-            .populate('proBrandId', 'id name')
-            .populate('proVariantTypeId', 'id name')
-            .populate('proVariantId', 'id name');
-        if (!product) {
-            return res.status(404).json({ success: false, message: "Product not found." });
-        }
-        res.json({ success: true, message: "Product retrieved successfully.", data: product });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    const product = await Product.findById(req.params.id)
+        .populate('proCategoryId', '_id name')
+        .populate('proSubCategoryId', '_id name')
+        .populate('proBrandId', '_id name');
+    if (!product) {
+        return res.status(404).json({ success: false, message: "Product not found." });
     }
+    res.json({ success: true, message: "Product retrieved successfully.", data: product });
 }));
 
-
-
-// create new product
+// ==============================
+// POST - Create new product
+// ==============================
 router.post('/', asyncHandler(async (req, res) => {
     uploadProducts.fields([
         { name: 'image1', maxCount: 1 },
         { name: 'image2', maxCount: 1 },
         { name: 'image3', maxCount: 1 },
         { name: 'image4', maxCount: 1 },
-        { name: 'image5', maxCount: 1 }
+        { name: 'image5', maxCount: 1 },
     ])(req, res, async function (err) {
         if (err instanceof multer.MulterError || err) {
-            console.error(`Add product: ${err}`);
-            return res.json({ success: false, message: err.message });
+            return res.status(400).json({ success: false, message: err.message });
         }
 
-        const { name, description, quantity, price, offerPrice, proCategoryId, proSubCategoryId, proBrandId, proVariantTypeId, proVariantId } = req.body;
+        const {
+            name,
+            description,
+            quantity,
+            price,
+            offerPrice,
+            proCategoryId,
+            proSubCategoryId,
+            proBrandId,
+            proVariants
+        } = req.body;
 
-        if (!name || !quantity || !price || !proCategoryId || !proSubCategoryId) {
-            return res.status(400).json({ success: false, message: "Required fields are missing." });
+        if (!name || !quantity || !price || !proCategoryId || !proSubCategoryId || !proVariants) {
+            return res.status(400).json({ success: false, message: "Missing required fields." });
+        }
+
+        let parsedVariants;
+        try {
+            parsedVariants = JSON.parse(proVariants); // expected: [{ type: "Color", values: [...] }, ...]
+        } catch (parseErr) {
+            return res.status(400).json({ success: false, message: "Invalid JSON for proVariants." });
         }
 
         const imageUrls = [];
-
         const fields = ['image1', 'image2', 'image3', 'image4', 'image5'];
-        for (let index = 0; index < fields.length; index++) {
-            const field = fields[index];
+        for (let i = 0; i < fields.length; i++) {
+            const field = fields[i];
             if (req.files[field] && req.files[field][0]) {
                 const file = req.files[field][0];
-
                 try {
                     const result = await new Promise((resolve, reject) => {
                         const uploadStream = cloudinary.uploader.upload_stream(
                             { folder: 'products' },
-                            (error, result) => {
-                                if (error) reject(error);
-                                else resolve(result);
-                            }
+                            (error, result) => error ? reject(error) : resolve(result)
                         );
                         streamifier.createReadStream(file.buffer).pipe(uploadStream);
                     });
-                    imageUrls.push({ image: index + 1, url: result.secure_url });
+                    imageUrls.push({ image: i + 1, url: result.secure_url });
                 } catch (uploadErr) {
                     console.error("Cloudinary upload error:", uploadErr);
                 }
@@ -93,99 +95,109 @@ router.post('/', asyncHandler(async (req, res) => {
         }
 
         const newProduct = new Product({
-            name, description, quantity, price, offerPrice,
-            proCategoryId, proSubCategoryId, proBrandId, proVariantTypeId, proVariantId,
+            name,
+            description,
+            quantity,
+            price,
+            offerPrice,
+            proCategoryId,
+            proSubCategoryId,
+            proBrandId,
+            proVariants: parsedVariants,
             images: imageUrls
         });
 
         await newProduct.save();
-        res.json({ success: true, message: "Product created successfully.", data: null });
+        res.json({ success: true, message: "Product created successfully.", data: newProduct });
     });
 }));
 
-
-// Update a product
+// ==============================
+// PUT - Update product
+// ==============================
 router.put('/:id', asyncHandler(async (req, res) => {
-    const productId = req.params.id;
-
     uploadProducts.fields([
         { name: 'image1', maxCount: 1 },
         { name: 'image2', maxCount: 1 },
         { name: 'image3', maxCount: 1 },
         { name: 'image4', maxCount: 1 },
-        { name: 'image5', maxCount: 1 }
+        { name: 'image5', maxCount: 1 },
     ])(req, res, async function (err) {
         if (err instanceof multer.MulterError || err) {
-            console.error(`Update product: ${err}`);
-            return res.status(500).json({ success: false, message: err.message });
+            return res.status(400).json({ success: false, message: err.message });
         }
 
-        const productToUpdate = await Product.findById(productId);
-        if (!productToUpdate) {
-            return res.status(404).json({ success: false, message: "Product not found." });
+        const {
+            name,
+            description,
+            quantity,
+            price,
+            offerPrice,
+            proCategoryId,
+            proSubCategoryId,
+            proBrandId,
+            proVariants
+        } = req.body;
+
+        let parsedVariants;
+        try {
+            parsedVariants = JSON.parse(proVariants);
+        } catch (parseErr) {
+            return res.status(400).json({ success: false, message: "Invalid JSON for proVariants." });
         }
 
-        const { name, description, quantity, price, offerPrice, proCategoryId, proSubCategoryId, proBrandId, proVariantTypeId, proVariantId } = req.body;
-
-        // Update text fields
-        productToUpdate.name = name || productToUpdate.name;
-        productToUpdate.description = description || productToUpdate.description;
-        productToUpdate.quantity = quantity || productToUpdate.quantity;
-        productToUpdate.price = price || productToUpdate.price;
-        productToUpdate.offerPrice = offerPrice || productToUpdate.offerPrice;
-        productToUpdate.proCategoryId = proCategoryId || productToUpdate.proCategoryId;
-        productToUpdate.proSubCategoryId = proSubCategoryId || productToUpdate.proSubCategoryId;
-        productToUpdate.proBrandId = proBrandId || productToUpdate.proBrandId;
-        productToUpdate.proVariantTypeId = proVariantTypeId || productToUpdate.proVariantTypeId;
-        productToUpdate.proVariantId = proVariantId || productToUpdate.proVariantId;
-
+        const imageUrls = [];
         const fields = ['image1', 'image2', 'image3', 'image4', 'image5'];
-        for (let index = 0; index < fields.length; index++) {
-            const field = fields[index];
+        for (let i = 0; i < fields.length; i++) {
+            const field = fields[i];
             if (req.files[field] && req.files[field][0]) {
                 const file = req.files[field][0];
                 try {
                     const result = await new Promise((resolve, reject) => {
                         const uploadStream = cloudinary.uploader.upload_stream(
                             { folder: 'products' },
-                            (error, result) => {
-                                if (error) reject(error);
-                                else resolve(result);
-                            }
+                            (error, result) => error ? reject(error) : resolve(result)
                         );
                         streamifier.createReadStream(file.buffer).pipe(uploadStream);
                     });
-
-                    let imageEntry = productToUpdate.images.find(img => img.image === (index + 1));
-                    if (imageEntry) {
-                        imageEntry.url = result.secure_url;
-                    } else {
-                        productToUpdate.images.push({ image: index + 1, url: result.secure_url });
-                    }
+                    imageUrls.push({ image: i + 1, url: result.secure_url });
                 } catch (uploadErr) {
                     console.error("Cloudinary upload error:", uploadErr);
                 }
             }
         }
 
-        await productToUpdate.save();
-        res.json({ success: true, message: "Product updated successfully." });
-    });
-}));
-
-
-// Delete a product
-router.delete('/:id', asyncHandler(async (req, res) => {
-    const productID = req.params.id;
-    try {
-        const product = await Product.findByIdAndDelete(productID);
+        const product = await Product.findById(req.params.id);
         if (!product) {
             return res.status(404).json({ success: false, message: "Product not found." });
         }
-        res.json({ success: true, message: "Product deleted successfully." });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+
+        product.name = name;
+        product.description = description;
+        product.quantity = quantity;
+        product.price = price;
+        product.offerPrice = offerPrice;
+        product.proCategoryId = proCategoryId;
+        product.proSubCategoryId = proSubCategoryId;
+        product.proBrandId = proBrandId;
+        product.proVariants = parsedVariants;
+
+        if (imageUrls.length > 0) {
+            product.images = imageUrls;
+        }
+
+        await product.save();
+        res.json({ success: true, message: "Product updated successfully.", data: product });
+    });
+}));
+
+// ==============================
+// DELETE - Remove product
+// ==============================
+router.delete('/:id', asyncHandler(async (req, res) => {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: "Product not found." });
+    res.json({ success: true, message: "Product deleted successfully." });
 }));
 
 module.exports = router;
