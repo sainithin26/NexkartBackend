@@ -6,6 +6,9 @@ const orderSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  userName: {
+    type: String,
+  },
   orderDate: {
     type: Date,
     default: Date.now

@@ -48,13 +48,13 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // Create a new order
 router.post('/', asyncHandler(async (req, res) => {
-    const { userID,orderStatus, items, totalPrice, shippingAddress, paymentMethod, couponCode, orderTotal, trackingUrl } = req.body;
+    const { userID, userName, orderStatus, items, totalPrice, shippingAddress, paymentMethod, couponCode, orderTotal, trackingUrl } = req.body;
     if (!userID || !items || !totalPrice || !shippingAddress || !paymentMethod || !orderTotal) {
         return res.status(400).json({ success: false, message: "User ID, items, totalPrice, shippingAddress, paymentMethod, and orderTotal are required." });
     }
 
     try {
-        const order = new Order({ userID,orderStatus, items, totalPrice, shippingAddress, paymentMethod, couponCode, orderTotal, trackingUrl });
+        const order = new Order({ userID,userName, orderStatus, items, totalPrice, shippingAddress, paymentMethod, couponCode, orderTotal, trackingUrl });
         const newOrder = await order.save();
         res.json({ success: true, message: "Order created successfully.", data: null });
     } catch (error) {
