@@ -17,6 +17,11 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Name is required'],
     trim: true
   },
+  productCode: {
+    type: String,
+    required: [true, 'Product Code is required'],
+    trim: true
+  },
   description: {
     type: String,
     trim: true

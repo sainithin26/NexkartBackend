@@ -52,6 +52,7 @@ router.post('/', asyncHandler(async (req, res) => {
 
         const {
             name,
+            productCode,
             description,
             quantity,
             price,
@@ -62,7 +63,7 @@ router.post('/', asyncHandler(async (req, res) => {
             proVariants
         } = req.body;
 
-        if (!name || !quantity || !price || !proCategoryId || !proSubCategoryId || !proVariants) {
+        if (!name || !productCode || !quantity || !price || !proCategoryId || !proSubCategoryId || !proVariants) {
             return res.status(400).json({ success: false, message: "Missing required fields." });
         }
 
@@ -96,6 +97,7 @@ router.post('/', asyncHandler(async (req, res) => {
 
         const newProduct = new Product({
             name,
+            productCode,
             description,
             quantity,
             price,
@@ -129,6 +131,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
         const {
             name,
+            productCode,
             description,
             quantity,
             price,
@@ -173,6 +176,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
         }
 
         product.name = name;
+        product.productCode = productCode;
         product.description = description;
         product.quantity = quantity;
         product.price = price;
