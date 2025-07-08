@@ -11,7 +11,8 @@ const client = new OneSignal.Client(process.env.ONE_SIGNAL_APP_ID, process.env.O
 
 router.post('/send-notification', asyncHandler(async (req, res) => {
     const { title, description, imageUrl } = req.body;
-
+    console.log(process.env.ONE_SIGNAL_APP_ID);
+    console.log(process.env.ONE_SIGNAL_REST_API_KEY);
     const notificationBody = {
         app_id: process.env.ONE_SIGNAL_APP_ID,
         contents: {
