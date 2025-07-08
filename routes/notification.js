@@ -13,6 +13,7 @@ router.post('/send-notification', asyncHandler(async (req, res) => {
     const { title, description, imageUrl } = req.body;
 
     const notificationBody = {
+        app_id: process.env.ONE_SIGNAL_APP_ID,
         contents: {
             'en': description
         },
