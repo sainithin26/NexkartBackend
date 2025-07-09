@@ -29,6 +29,9 @@ const orderSchema = new mongoose.Schema({
         type: String,
         required: true
       },
+      productCode: {
+        type: String, // ✅ Add this line
+      },
       quantity: {
         type: Number,
         required: true

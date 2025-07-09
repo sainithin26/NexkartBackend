@@ -26,6 +26,7 @@ router.post('/send-notification', asyncHandler(async (req, res) => {
     };
 
     const response = await client.createNotification(notificationBody);
+    console.log(response.body);
     const notificationId = response.body.id;
     console.log('Notification sent to all users:', notificationId);
     const notification = new Notification({ notificationId, title,description,imageUrl });
