@@ -15,23 +15,15 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // login
 router.post('/login', async (req, res) => {
-    const { name, password } = req.body;
+    const { mobile, password } = req.body;
 
     try {
-        // Check if the user exists
-        const user = await User.findOne({ name });
-
-
-        if (!user) {
-            return res.status(401).json({ success: false, message: "Invalid name or password." });
-        }
-        // Check if the password is correct
-        if (user.password !== password) {
-            return res.status(401).json({ success: false, message: "Invalid name or password." });
+        const user = await User.findOne({ mobile });
+        if (!user || user.password !== password) {
+            return res.status(401).json({ success: false, message: "Invalid mobile or password." });
         }
 
-        // Authentication successful
-        res.status(200).json({ success: true, message: "Login successful.",data: user });
+        res.status(200).json({ success: true, message: "Login successful.", data: user });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -54,18 +46,19 @@ router.post('/login', async (req, res) => {
 
 // Create a new user
 router.post('/register', asyncHandler(async (req, res) => {
-    const { name, password } = req.body;
-    if (!name || !password) {
-        return res.status(400).json({ success: false, message: "Name, and password are required." });
+    const { mobile, password } = req.body;
+    if (!mobile || !password) {
+        return res.status(400).json({ success: false, message: "Mobile and password are required." });
     }
 
-    try {
-        const user = new User({ name, password });
-        const newUser = await user.save();
-        res.json({ success: true, message: "User created successfully.", data: null });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    const existingUser = await User.findOne({ mobile });
+    if (existingUser) {
+        return res.status(400).json({ success: false, message: "Mobile already registered." });
     }
+
+    const user = new User({ mobile, password });
+    await user.save();
+    res.json({ success: true, message: "User registered successfully.", data: null });
 }));
 
 // Update a user
