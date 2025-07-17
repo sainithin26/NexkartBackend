@@ -14,11 +14,42 @@ const uploadProducts = multer({ storage: storage });
 // GET all products
 // ==============================
 router.get('/', asyncHandler(async (req, res) => {
-    const products = await Product.find()
+    const { page, limit } = req.query;
+
+    const query = Product.find()
         .populate('proCategoryId', '_id name')
         .populate('proSubCategoryId', '_id name')
         .populate('proBrandId', '_id name');
-    res.json({ success: true, message: "Products retrieved successfully.", data: products });
+
+    if (page && limit) {
+        const pageNum = parseInt(page, 10) || 1;
+        const pageSize = parseInt(limit, 10) || 10;
+
+        const total = await Product.countDocuments();
+        const products = await query
+            .skip((pageNum - 1) * pageSize)
+            .limit(pageSize);
+
+        return res.json({
+            success: true,
+            message: "Products retrieved successfully.",
+            data: products,
+            pagination: {
+                totalItems: total,
+                currentPage: pageNum,
+                totalPages: Math.ceil(total / pageSize),
+                pageSize
+            }
+        });
+    } else {
+        // No pagination, return all products
+        const products = await query;
+        return res.json({
+            success: true,
+            message: "Products retrieved successfully.",
+            data: products
+        });
+    }
 }));
 
 // ==============================
