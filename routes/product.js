@@ -14,12 +14,17 @@ const uploadProducts = multer({ storage: storage });
 // GET all products
 // ==============================
 router.get('/', asyncHandler(async (req, res) => {
-    const { page, limit } = req.query;
+    const { page, limit, categoryId } = req.query;
 
-    const query = Product.find()
-        .populate('proCategoryId', '_id name')
-        .populate('proSubCategoryId', '_id name')
-        .populate('proBrandId', '_id name');
+let filter = {};
+if (categoryId) {
+  filter.proCategoryId = categoryId;
+}
+
+const query = Product.find(filter)
+  .populate('proCategoryId', '_id name')
+  .populate('proSubCategoryId', '_id name')
+  .populate('proBrandId', '_id name');
 
     if (page && limit) {
         const pageNum = parseInt(page, 10) || 1;
