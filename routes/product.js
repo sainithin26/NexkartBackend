@@ -6,6 +6,9 @@ const { uploadProduct } = require('../uploadFile');
 const asyncHandler = require('express-async-handler');
 const streamifier = require('streamifier');
 const cloudinary = require('../config/cloudinary');
+const { uploadToBunny } = require('../utils/uploadToBunny');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 const storage = multer.memoryStorage();
 const uploadProducts = multer({ storage: storage });
@@ -30,7 +33,7 @@ const query = Product.find(filter)
         const pageNum = parseInt(page, 10) || 1;
         const pageSize = parseInt(limit, 10) || 10;
 
-        const total = await Product.countDocuments();
+        const total = await Product.countDocuments(filter);
         const products = await query
             .skip((pageNum - 1) * pageSize)
             .limit(pageSize);
@@ -117,14 +120,10 @@ router.post('/', asyncHandler(async (req, res) => {
             if (req.files[field] && req.files[field][0]) {
                 const file = req.files[field][0];
                 try {
-                    const result = await new Promise((resolve, reject) => {
-                        const uploadStream = cloudinary.uploader.upload_stream(
-                            { folder: 'products' },
-                            (error, result) => error ? reject(error) : resolve(result)
-                        );
-                        streamifier.createReadStream(file.buffer).pipe(uploadStream);
-                    });
-                    imageUrls.push({ image: i + 1, url: result.secure_url });
+                    const fileExt = path.extname(file.originalname); // keep .jpg or .png etc
+                    const fileName = `products/${uuidv4()}-${Date.now()}${fileExt}`;
+                    const url = await uploadToBunny(file.buffer, fileName);
+                    imageUrls.push({ image: i + 1, url });
                 } catch (uploadErr) {
                     console.error("Cloudinary upload error:", uploadErr);
                 }
@@ -192,14 +191,10 @@ router.put('/:id', asyncHandler(async (req, res) => {
             if (req.files[field] && req.files[field][0]) {
                 const file = req.files[field][0];
                 try {
-                    const result = await new Promise((resolve, reject) => {
-                        const uploadStream = cloudinary.uploader.upload_stream(
-                            { folder: 'products' },
-                            (error, result) => error ? reject(error) : resolve(result)
-                        );
-                        streamifier.createReadStream(file.buffer).pipe(uploadStream);
-                    });
-                    imageUrls.push({ image: i + 1, url: result.secure_url });
+                    const fileExt = path.extname(file.originalname); // keep .jpg or .png etc
+                    const fileName = `products/${uuidv4()}-${Date.now()}${fileExt}`;
+                    const url = await uploadToBunny(file.buffer, fileName);
+                    imageUrls.push({ image: i + 1, url });
                 } catch (uploadErr) {
                     console.error("Cloudinary upload error:", uploadErr);
                 }
