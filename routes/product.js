@@ -4,8 +4,7 @@ const Product = require('../model/product');
 const multer = require('multer');
 const { uploadProduct } = require('../uploadFile');
 const asyncHandler = require('express-async-handler');
-const streamifier = require('streamifier');
-const cloudinary = require('../config/cloudinary');
+
 const { uploadToBunny } = require('../config/uploadToBunny');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -125,7 +124,7 @@ router.post('/', asyncHandler(async (req, res) => {
                     const url = await uploadToBunny(file.buffer, fileName);
                     imageUrls.push({ image: i + 1, url });
                 } catch (uploadErr) {
-                    console.error("Cloudinary upload error:", uploadErr);
+                    console.error("bunny upload error:", uploadErr);
                 }
             }
         }
@@ -196,7 +195,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
                     const url = await uploadToBunny(file.buffer, fileName);
                     imageUrls.push({ image: i + 1, url });
                 } catch (uploadErr) {
-                    console.error("Cloudinary upload error:", uploadErr);
+                    console.error("Bunny upload error:", uploadErr);
                 }
             }
         }
