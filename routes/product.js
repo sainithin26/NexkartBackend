@@ -6,7 +6,7 @@ const { uploadProduct } = require('../uploadFile');
 const asyncHandler = require('express-async-handler');
 const streamifier = require('streamifier');
 const cloudinary = require('../config/cloudinary');
-const { uploadToBunny } = require('../utils/uploadToBunny');
+const { uploadToBunny } = require('../config/uploadToBunny');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
