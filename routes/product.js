@@ -16,48 +16,54 @@ const uploadProducts = multer({ storage: storage });
 // GET all products
 // ==============================
 router.get('/', asyncHandler(async (req, res) => {
-    const { page, limit, categoryId } = req.query;
+  const { page, limit, categoryId, subCategoryId } = req.query;
 
-let filter = {};
-if (categoryId) {
-  filter.proCategoryId = categoryId;
-}
+  let filter = {};
+  if (categoryId) {
+    filter.proCategoryId = categoryId;
+  }
 
-const query = Product.find(filter)
-  .populate('proCategoryId', '_id name')
-  .populate('proSubCategoryId', '_id name')
-  .populate('proBrandId', '_id name');
+  // ✅ Apply subCategoryId filter if provided
+  if (subCategoryId) {
+    filter.proSubCategoryId = subCategoryId;
+  }
 
-    if (page && limit) {
-        const pageNum = parseInt(page, 10) || 1;
-        const pageSize = parseInt(limit, 10) || 10;
+  const query = Product.find(filter)
+    .populate('proCategoryId', '_id name')
+    .populate('proSubCategoryId', '_id name')
+    .populate('proBrandId', '_id name');
 
-        const total = await Product.countDocuments(filter);
-        const products = await query
-            .skip((pageNum - 1) * pageSize)
-            .limit(pageSize);
+  if (page && limit) {
+    const pageNum = parseInt(page, 10) || 1;
+    const pageSize = parseInt(limit, 10) || 10;
 
-        return res.json({
-            success: true,
-            message: "Products retrieved successfully.",
-            data: products,
-            pagination: {
-                totalItems: total,
-                currentPage: pageNum,
-                totalPages: Math.ceil(total / pageSize),
-                pageSize
-            }
-        });
-    } else {
-        // No pagination, return all products
-        const products = await query;
-        return res.json({
-            success: true,
-            message: "Products retrieved successfully.",
-            data: products
-        });
-    }
+    const total = await Product.countDocuments(filter);
+    const products = await query
+      .skip((pageNum - 1) * pageSize)
+      .limit(pageSize);
+
+    return res.json({
+      success: true,
+      message: "Products retrieved successfully.",
+      data: products,
+      pagination: {
+        totalItems: total,
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / pageSize),
+        pageSize
+      }
+    });
+  } else {
+    // No pagination, return all products
+    const products = await query;
+    return res.json({
+      success: true,
+      message: "Products retrieved successfully.",
+      data: products
+    });
+  }
 }));
+
 
 // ==============================
 // GET single product by ID
